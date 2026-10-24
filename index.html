@@ -1,0 +1,112 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мониторинг цен</title>
+<style>
+:root{--bg:#f4f5f7;--s:#fff;--ink:#1a2130;--mu:#5b6475;--ln:#dde1e8;--ac:#2d5bd0;--code:#eef1f6}
+@media (prefers-color-scheme:dark){:root{--bg:#11151c;--s:#181e28;--ink:#e3e8f0;--mu:#97a1b3;--ln:#2a3342;--ac:#7fa2f5;--code:#1f2735}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;padding:0 max(16px,env(safe-area-inset-left))}
+main{max-width:900px;margin:0 auto;padding:28px 0 60px}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.btn{display:inline-block;padding:9px 16px;border-radius:8px;background:var(--ac);color:#fff;text-decoration:none;font-weight:600;font-size:14px}
+h1{font-size:clamp(26px,5vw,36px);line-height:1.2;margin:.2em 0 .5em}h2{font-size:22px;margin:1.8em 0 .6em;padding-top:.6em;border-top:1px solid var(--ln)}h3{font-size:18px}
+a{color:var(--ac)}img{max-width:100%;height:auto;background:#fff;border-radius:8px;border:1px solid var(--ln)}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}td,th{border:1px solid var(--ln);padding:6px 9px;text-align:left;vertical-align:top}th{background:var(--code)}
+.tw,main>table{display:block;overflow-x:auto;background:var(--s)}
+</style></head><body><main>
+<div class="top"><span style="color:var(--mu);font-size:14px">Python · описание проекта</span><a class="btn" href="https://github.com/skayman777-svg/price-monitoring">Исходный код на GitHub</a></div>
+<h1>Мониторинг цен: проект на Python</h1>
+<p>Небольшой рабочий проект: обходит каталог интернет-магазина, хранит историю снимков, сравнивает два последних
+и собирает отчёт в Excel и короткую сводку для Telegram.</p>
+<p><strong>Проверено на тестовом магазине.</strong> Магазин «ТехноДом» вымышленный, он запускается на вашем
+компьютере вместе с проектом (<code>mock_shop/</code>). Реальные сайты не обрабатывались, товары и цены придуманы.</p>
+<h2>Быстрый запуск</h2>
+<pre><code class="language-bash">pip install -r requirements.txt
+python run.py
+</code></pre>
+<p>Что произойдёт: поднимется тестовый магазин, будет снят снимок №1, в магазине изменятся цены, наличие и
+ассортимент, будет снят снимок №2, затем сравнение, отчёт и сводка. В конце проверка сбоя: раздел
+недоступен, снимок помечается неполным и в сравнении не участвует.</p>
+<p>Результат в папке <code>out/</code>: <code>price_report.xlsx</code> (отчёт), <code>prices.db</code> (история снимков, SQLite), <code>run.log</code> (журнал).</p>
+<p>Тесты (31 проверка, без внешних библиотек): <code>python -m unittest discover -s tests -t .</code></p>
+<h2>Результат тестового прогона</h2>
+<table>
+<thead>
+<tr>
+<th>Показатель</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Товаров в снимке №1 / №2</td>
+<td>36 / 37</td>
+</tr>
+<tr>
+<td>Страниц обойдено за снимок</td>
+<td>7 (4 раздела, дубли между разделами убираются по артикулу)</td>
+</tr>
+<tr>
+<td>Цена снизилась / выросла</td>
+<td>11 / 3</td>
+</tr>
+<tr>
+<td>Новых / пропавших товаров</td>
+<td>3 / 2</td>
+</tr>
+<tr>
+<td>Снова в наличии / нет в наличии</td>
+<td>3 / 3</td>
+</tr>
+<tr>
+<td>Предупреждение парсера</td>
+<td>1 (карточка без цены, товар сохранён с пометкой)</td>
+</tr>
+</tbody>
+</table>
+<p>Временный ответ 503 на одной странице: парсер повторил запрос и получил страницу. Полная недоступность раздела:
+снимок сохранён как неполный, отчёт не строится на неполных данных.</p>
+<h2>Как подключить свой сайт</h2>
+<ol>
+<li>Скопировать <code>config.json</code>, указать <code>base_url</code> и разделы каталога.</li>
+<li>Подогнать селекторы в <code>monitor/parse.py</code> под разметку сайта: карточка, название, цена, старая цена, наличие,
+   ссылка «следующая страница».</li>
+<li>Запускать по расписанию (cron или планировщик заданий Windows):
+   <code>python -m monitor run --config my.json --db out/prices.db --out out/report.xlsx</code></li>
+</ol>
+<p>Первый запуск делает снимок №1, со второго есть что сравнивать. Код выхода <code>1</code> означает неполный снимок
+(удобно для уведомления о сбое). Отдельные команды: <code>crawl</code> (только снимок) и <code>report</code> (только отчёт).
+Отправка сводки в Telegram: флаг <code>--send</code> и переменные окружения <code>TELEGRAM_BOT_TOKEN</code>, <code>TELEGRAM_CHAT_ID</code>.</p>
+<h2>Что умеет</h2>
+<ul>
+<li>Аккуратный сбор: честный <code>User-Agent</code> (подмены нет), <code>robots.txt</code> (<code>Disallow</code> и <code>Crawl-delay</code>), пауза между
+  запросами, таймауты, повторные попытки с записью в журнал.</li>
+<li>Разбор «живой» разметки: неразрывные пробелы в ценах, «от 8 990 ₽», «Цена по запросу», зачёркнутая цена,
+  карточка без цены, баннеры и рекомендации с ценами не попадают в данные.</li>
+<li>Хранение в SQLite, деньги в копейках (без ошибок округления).</li>
+<li>Защита от ложных тревог: не загрузился раздел, каталог пуст или товаров стало меньше половины, и такой
+  снимок не участвует в сравнении.</li>
+<li>Сравнение: снижение и рост цены, новые, пропавшие, снова в наличии, нет в наличии.</li>
+<li>Отчёт Excel: сводка с графиком, список изменений с цветами и фильтрами, полный прайс.</li>
+<li>Сводка для мессенджера с порогом по проценту изменения цены.</li>
+</ul>
+<h2>Ограничения</h2>
+<ul>
+<li>Проект проверен только на тестовом магазине. Каждый реальный сайт требует настройки селекторов и проверки.</li>
+<li>Если цены на сайте подгружаются скриптами, нужен сбор через браузер (Playwright) либо официальный API или
+  выгрузка. Это отдельная оценка.</li>
+<li>Защиту от ботов (капчи, Cloudflare и подобное) проект не обходит, обход не гарантируется. Перед работой с
+  чужим сайтом нужно изучить условия использования и <code>robots.txt</code>; где есть официальный API или фид, лучше
+  брать данные из них.</li>
+<li>Отправка в Telegram написана, но на настоящем боте не запускалась.</li>
+<li>В отчёте значения, а не формулы: файл одинаково открывается в любых программах.</li>
+</ul>
+<h2>Структура</h2>
+<pre><code>run.py             сквозной тестовый запуск
+config.json         сайт, разделы, задержки, порог уведомлений
+monitor/            fetch (загрузка), parse (разбор), crawl (обход), store (SQLite),
+                    diff (сравнение), report (Excel), notify (сводка), cli
+mock_shop/          тестовый магазин для прогона и тестов
+tests/              unittest: разбор цен и карточек, сравнение, сбои, robots.txt, отчёт
+</code></pre><h2>Отчёт Excel: лист «Сводка»</h2><div class="tw"><table><tr><td>Мониторинг цен: сравнение двух снимков</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>Магазин: ТехноДом</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>Снимок</td><td>Время начала</td><td>Товаров</td><td>Страниц</td><td>Предупреждений</td><td></td></tr><tr><td>№1 (предыдущий)</td><td>2026-10-24 08:47:02</td><td>36</td><td>7</td><td>1</td><td></td></tr><tr><td>№2 (текущий)</td><td>2026-10-24 08:47:02</td><td>37</td><td>7</td><td>1</td><td></td></tr><tr><td>Что изменилось</td><td>Количество</td><td></td><td></td><td></td><td></td></tr><tr><td>Цена снизилась</td><td>11</td><td></td><td></td><td></td><td></td></tr><tr><td>Цена выросла</td><td>3</td><td></td><td></td><td></td><td></td></tr><tr><td>Новый товар</td><td>3</td><td></td><td></td><td></td><td></td></tr><tr><td>Товар пропал</td><td>2</td><td></td><td></td><td></td><td></td></tr><tr><td>Снова в наличии</td><td>3</td><td></td><td></td><td></td><td></td></tr><tr><td>Нет в наличии</td><td>3</td><td></td><td></td><td></td><td></td></tr><tr><td>Изменения цен</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>Товар</td><td>Артикул</td><td>Было</td><td>Стало</td><td>Снижение</td><td>Рост</td></tr><tr><td>Наушники Aster Sound ANC (накладные, Bluetooth)</td><td>HP-3003</td><td>12990</td><td>9990</td><td>-0.2309468822170901</td><td></td></tr><tr><td>Смартфон Vektor A2 64 ГБ</td><td>PH-2010</td><td>9990</td><td>8490</td><td>-0.1501501501501502</td><td></td></tr><tr><td>Ноутбук Aster Air 13 (Ryzen 5 / 8 ГБ / 256 ГБ)</td><td>NB-1003</td><td>49990</td><td>44990</td><td>-0.1000200040008002</td><td></td></tr><tr><td>Смартфон Lumen X Max 512 ГБ</td><td>PH-2008</td><td>71990</td><td>64990</td><td>-0.09723572718433114</td><td></td></tr><tr><td>Смартфон Zefir S5 256 ГБ</td><td>PH-2002</td><td>21990</td><td>19990</td><td>-0.09095043201455207</td><td></td></tr><tr><td>Наушники Orbita Kids (с ограничением громкости)</td><td>HP-3009</td><td>2490</td><td>2290</td><td>-0.08032128514056225</td><td></td></tr><tr><td>Наушники Lumen Max (полноразмерные, ANC)</td><td>HP-3006</td><td>24990</td><td>22990</td><td>-0.08003201280512204</td><td></td></tr><tr><td>Ноутбук Aster Book 15 (Core i5 / 16 ГБ / 512 ГБ)</td><td>NB-1001</td><td>64990</td><td>59990</td><td>-0.07693491306354824</td><td></td></tr><tr><td>Ноутбук Nordik Pro 16 (Core i7 / 32 ГБ / 1 ТБ / RTX…</td><td>NB-1005</td><td>129990</td><td>119990</td><td>-0.07692899453804139</td><td></td></tr><tr><td>Ноутбук Lumen Studio 16 (Ryzen 9 / 32 ГБ / 2 ТБ)</td><td>NB-1009</td><td>149990</td><td>139990</td><td>-0.06667111140742717</td><td></td></tr><tr><td>Наушники Zefir Buds 2 (TWS)</td><td>HP-3001</td><td>3990</td><td>3890</td><td>-0.02506265664160401</td><td></td></tr><tr><td>Ноутбук Orbita Work 15 (Core i5 / 16 ГБ / 512 ГБ)</td><td>NB-1012</td><td>57990</td><td>62990</td><td></td><td>0.08622176237282292</td></tr><tr><td>Наушники Lumen Air (TWS)</td><td>HP-3005</td><td>5490</td><td>5990</td><td></td><td>0.09107468123861566</td></tr><tr><td>Смартфон Aster Nova 8 128 ГБ</td><td>PH-2005</td><td>24990</td><td>27990</td><td></td><td>0.1200480192076831</td></tr></table></div><h2>Отчёт Excel: лист «Изменения»</h2><div class="tw"><table><tr><td>Что изменилось</td><td>Артикул</td><td>Товар</td><td>Раздел</td><td>Было</td><td>Стало</td><td>Изменение, ₽</td><td>Изменение, %</td><td>Страница товара</td></tr><tr><td>Цена снизилась</td><td>HP-3003</td><td>Наушники Aster Sound ANC (накладные, Bluetooth)</td><td>Наушники</td><td>12990</td><td>9990</td><td>-3000</td><td>-0.2309468822170901</td><td>/product/hp-3003/</td></tr><tr><td>Цена снизилась</td><td>PH-2010</td><td>Смартфон Vektor A2 64 ГБ</td><td>Смартфоны</td><td>9990</td><td>8490</td><td>-1500</td><td>-0.1501501501501502</td><td>/product/ph-2010/</td></tr><tr><td>Цена снизилась</td><td>NB-1003</td><td>Ноутбук Aster Air 13 (Ryzen 5 / 8 ГБ / 256 ГБ)</td><td>Ноутбуки</td><td>49990</td><td>44990</td><td>-5000</td><td>-0.1000200040008002</td><td>/product/nb-1003/</td></tr><tr><td>Цена снизилась</td><td>PH-2008</td><td>Смартфон Lumen X Max 512 ГБ</td><td>Смартфоны</td><td>71990</td><td>64990</td><td>-7000</td><td>-0.09723572718433114</td><td>/product/ph-2008/</td></tr><tr><td>Цена снизилась</td><td>PH-2002</td><td>Смартфон Zefir S5 256 ГБ</td><td>Смартфоны</td><td>21990</td><td>19990</td><td>-2000</td><td>-0.09095043201455207</td><td>/product/ph-2002/</td></tr><tr><td>Цена снизилась</td><td>HP-3009</td><td>Наушники Orbita Kids (с ограничением громкости)</td><td>Наушники</td><td>2490</td><td>2290</td><td>-200</td><td>-0.08032128514056225</td><td>/product/hp-3009/</td></tr><tr><td>Цена снизилась</td><td>HP-3006</td><td>Наушники Lumen Max (полноразмерные, ANC)</td><td>Наушники</td><td>24990</td><td>22990</td><td>-2000</td><td>-0.08003201280512204</td><td>/product/hp-3006/</td></tr><tr><td>Цена снизилась</td><td>NB-1001</td><td>Ноутбук Aster Book 15 (Core i5 / 16 ГБ / 512 ГБ)</td><td>Ноутбуки</td><td>64990</td><td>59990</td><td>-5000</td><td>-0.07693491306354824</td><td>/product/nb-1001/</td></tr><tr><td>Цена снизилась</td><td>NB-1005</td><td>Ноутбук Nordik Pro 16 (Core i7 / 32 ГБ / 1 ТБ / RTX 4060)</td><td>Ноутбуки</td><td>129990</td><td>119990</td><td>-10000</td><td>-0.07692899453804139</td><td>/product/nb-1005/</td></tr><tr><td>Цена снизилась</td><td>NB-1009</td><td>Ноутбук Lumen Studio 16 (Ryzen 9 / 32 ГБ / 2 ТБ)</td><td>Ноутбуки</td><td>149990</td><td>139990</td><td>-10000</td><td>-0.06667111140742717</td><td>/product/nb-1009/</td></tr><tr><td>Цена снизилась</td><td>HP-3001</td><td>Наушники Zefir Buds 2 (TWS)</td><td>Наушники</td><td>3990</td><td>3890</td><td>-100</td><td>-0.02506265664160401</td><td>/product/hp-3001/</td></tr><tr><td>Цена выросла</td><td>PH-2005</td><td>Смартфон Aster Nova 8 128 ГБ</td><td>Смартфоны</td><td>24990</td><td>27990</td><td>3000</td><td>0.1200480192076831</td><td>/product/ph-2005/</td></tr><tr><td>Цена выросла</td><td>HP-3005</td><td>Наушники Lumen Air (TWS)</td><td>Наушники</td><td>5490</td><td>5990</td><td>500</td><td>0.09107468123861566</td><td>/product/hp-3005/</td></tr><tr><td>Цена выросла</td><td>NB-1012</td><td>Ноутбук Orbita Work 15 (Core i5 / 16 ГБ / 512 ГБ)</td><td>Ноутбуки</td><td>57990</td><td>62990</td><td>5000</td><td>0.08622176237282292</td><td>/product/nb-1012/</td></tr><tr><td>Новый товар</td><td>HP-3011</td><td>Наушники Aster Sound Air (TWS, ANC)</td><td>Наушники</td><td>—</td><td>7490</td><td>—</td><td>—</td><td>/product/hp-3011/</td></tr><tr><td>Новый товар</td><td>NB-1015</td><td>Ноутбук Nordik Pro 14 (Core i7 / 32 ГБ / 1 ТБ)</td><td>Ноутбуки</td><td>—</td><td>94990</td><td>—</td><td>—</td><td>/product/nb-1015/</td></tr><tr><td>Новый товар</td><td>PH-2013</td><td>Смартфон Zefir S6 256 ГБ</td><td>Смартфоны</td><td>—</td><td>29990</td><td>—</td><td>—</td><td>/product/ph-2013/</td></tr><tr><td>Товар пропал</td><td>NB-1008</td><td>Ноутбук Vektor Go 15 (Core i3 / 8 ГБ / 512 ГБ)</td><td>Ноутбуки</td><td>38990</td><td>—</td><td>—</td><td>—</td><td>/product/nb-1008/</td></tr><tr><td>Товар пропал</td><td>PH-2012</td><td>Смартфон Orbita Lite 128 ГБ</td><td>Смартфоны</td><td>13990</td><td>—</td><td>—</td><td>—</td><td>/product/ph-2012/</td></tr><tr><td>Снова в наличии</td><td>HP-3008</td><td>Наушники Vektor Mini &amp; кейс «Pocket» (проводные)</td><td>Наушники</td><td>990</td><td>990</td><td>—</td><td>—</td><td>/product/hp-3008/</td></tr><tr><td>Снова в наличии</td><td>NB-1011</td><td>Ноутбук Orbita Edu 11 (N100 / 4 ГБ / 128 ГБ)</td><td>Ноутбуки</td><td>19990</td><td>19990</td><td>—</td><td>—</td><td>/product/nb-1011/</td></tr><tr><td>Снова в наличии</td><td>PH-2009</td><td>Смартфон Nordik Fold 512 ГБ</td><td>Смартфоны</td><td>94990</td><td>94990</td><td>—</td><td>—</td><td>/product/ph-2009/</td></tr><tr><td>Нет в наличии</td><td>HP-3007</td><td>Наушники Nordik Run (спортивные, Bluetooth)</td><td>Наушники</td><td>2990</td><td>2990</td><td>—</td><td>—</td><td>/product/hp-3007/</td></tr><tr><td>Нет в наличии</td><td>NB-1006</td><td>Ноутбук Nordik Pro 14 (Core i5 / 16 ГБ / 512 ГБ)</td><td>Ноутбуки</td><td>74990</td><td>74990</td><td>—</td><td>—</td><td>/product/nb-1006/</td></tr><tr><td>Нет в наличии</td><td>PH-2004</td><td>Смартфон Zefir S5 Ultra 512 ГБ</td><td>Смартфоны</td><td>59990</td><td>59990</td><td>—</td><td>—</td><td>/product/ph-2004/</td></tr></table></div>
+<p style="margin-top:2em"><a class="btn" href="https://github.com/skayman777-svg/price-monitoring">Исходный код на GitHub</a></p>
+</main></body></html>
