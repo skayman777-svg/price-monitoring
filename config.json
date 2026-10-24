@@ -1,0 +1,15 @@
+{
+  "shop_name": "ТехноДом",
+  "base_url": "http://127.0.0.1:8765",
+  "categories": {
+    "Ноутбуки": "/catalog/laptops/",
+    "Смартфоны": "/catalog/phones/",
+    "Наушники": "/catalog/headphones/",
+    "Акции": "/catalog/sale/"
+  },
+  "user_agent": "PriceMonitor/1.0",
+  "delay_seconds": 1.0,
+  "timeout_seconds": 10,
+  "retries": 3,
+  "alert_min_pct": 5
+}
