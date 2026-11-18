@@ -1,83 +1,84 @@
-# Мониторинг цен: проект на Python
+# Price Monitoring: a Python project
 
-Небольшой рабочий проект: обходит каталог интернет-магазина, хранит историю снимков, сравнивает два последних
-и собирает отчёт в Excel и короткую сводку для Telegram.
+A small working project: it crawls an online store catalog, keeps a history of snapshots, compares the last two
+and builds an Excel report plus a short Telegram summary.
 
-**Проверено на тестовом магазине.** Магазин «ТехноДом» вымышленный, он запускается на вашем
-компьютере вместе с проектом (`mock_shop/`). Реальные сайты не обрабатывались, товары и цены придуманы.
+**Live demo page:** https://skayman777-svg.github.io/price-monitoring/
 
-## Быстрый запуск
+**Tested on a mock store.** The TechnoHome store is fictional; it runs on your machine together with the project
+(`mock_shop/`). No real websites were scraped, products and prices are made up.
+
+## Quick start
 
 ```bash
 pip install -r requirements.txt
 python run.py
 ```
 
-Что произойдёт: поднимется тестовый магазин, будет снят снимок №1, в магазине изменятся цены, наличие и
-ассортимент, будет снят снимок №2, затем сравнение, отчёт и сводка. В конце проверка сбоя: раздел
-недоступен, снимок помечается неполным и в сравнении не участвует.
+What happens: the mock store starts, snapshot #1 is taken, the store changes prices, stock and assortment,
+snapshot #2 is taken, then comparison, report and summary. At the end a failure check runs: a section is down,
+the snapshot is marked incomplete and excluded from comparison.
 
-Результат в папке `out/`: `price_report.xlsx` (отчёт), `prices.db` (история снимков, SQLite), `run.log` (журнал).
+Output goes to `out/`: `price_report.xlsx` (report), `prices.db` (snapshot history, SQLite), `run.log` (log).
 
-Тесты (31 проверка, без внешних библиотек): `python -m unittest discover -s tests -t .`
+Tests (31 checks, no external libraries): `python -m unittest discover -s tests -t .`
 
-## Результат тестового прогона
+## Test run results
 
-| Показатель | Значение |
+| Metric | Value |
 |---|---|
-| Товаров в снимке №1 / №2 | 36 / 37 |
-| Страниц обойдено за снимок | 7 (4 раздела, дубли между разделами убираются по артикулу) |
-| Цена снизилась / выросла | 11 / 3 |
-| Новых / пропавших товаров | 3 / 2 |
-| Снова в наличии / нет в наличии | 3 / 3 |
-| Предупреждение парсера | 1 (карточка без цены, товар сохранён с пометкой) |
+| Products in snapshot #1 / #2 | 36 / 37 |
+| Pages crawled per snapshot | 7 (4 sections, duplicates across sections removed by SKU) |
+| Price down / price up | 11 / 3 |
+| New / removed products | 3 / 2 |
+| Back in stock / out of stock | 3 / 3 |
+| Parser warnings | 1 (card without a price, product saved with a note) |
 
-Временный ответ 503 на одной странице: парсер повторил запрос и получил страницу. Полная недоступность раздела:
-снимок сохранён как неполный, отчёт не строится на неполных данных.
+A temporary 503 on one page: the parser retried and got the page. A whole section down: the snapshot is saved as
+incomplete, and no report is built on incomplete data.
 
-## Как подключить свой сайт
+## How to connect your own site
 
-1. Скопировать `config.json`, указать `base_url` и разделы каталога.
-2. Подогнать селекторы в `monitor/parse.py` под разметку сайта: карточка, название, цена, старая цена, наличие,
-   ссылка «следующая страница».
-3. Запускать по расписанию (cron или планировщик заданий Windows):
+1. Copy `config.json`, set `base_url` and the catalog sections.
+2. Adjust the selectors in `monitor/parse.py` to the site markup: card, title, price, old price, stock,
+   “next page” link.
+3. Run on a schedule (cron or Windows Task Scheduler):
    `python -m monitor run --config my.json --db out/prices.db --out out/report.xlsx`
 
-Первый запуск делает снимок №1, со второго есть что сравнивать. Код выхода `1` означает неполный снимок
-(удобно для уведомления о сбое). Отдельные команды: `crawl` (только снимок) и `report` (только отчёт).
-Отправка сводки в Telegram: флаг `--send` и переменные окружения `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+The first run takes snapshot #1; from the second run on there is something to compare. Exit code `1` means an
+incomplete snapshot (handy for failure alerts). Separate commands: `crawl` (snapshot only) and `report` (report only).
+Sending the summary to Telegram: the `--send` flag and the `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` environment variables.
 
-## Что умеет
+## Features
 
-- Аккуратный сбор: честный `User-Agent` (подмены нет), `robots.txt` (`Disallow` и `Crawl-delay`), пауза между
-  запросами, таймауты, повторные попытки с записью в журнал.
-- Разбор «живой» разметки: неразрывные пробелы в ценах, «от 8 990 ₽», «Цена по запросу», зачёркнутая цена,
-  карточка без цены, баннеры и рекомендации с ценами не попадают в данные.
-- Хранение в SQLite, деньги в копейках (без ошибок округления).
-- Защита от ложных тревог: не загрузился раздел, каталог пуст или товаров стало меньше половины, и такой
-  снимок не участвует в сравнении.
-- Сравнение: снижение и рост цены, новые, пропавшие, снова в наличии, нет в наличии.
-- Отчёт Excel: сводка с графиком, список изменений с цветами и фильтрами, полный прайс.
-- Сводка для мессенджера с порогом по проценту изменения цены.
+- Polite crawling: an honest `User-Agent` (no spoofing), `robots.txt` (`Disallow` and `Crawl-delay`), delays between
+  requests, timeouts, retries with logging.
+- Parsing of real-world markup: non-breaking spaces in prices, “from $89”, “Price on request”, strikethrough prices,
+  cards without a price; banners and recommendation blocks with prices are not picked up.
+- SQLite storage, money stored in minor units (no rounding errors).
+- False alarm protection: if a section failed to load, the catalog is empty, or the product count dropped by more than
+  half, the snapshot is excluded from comparison.
+- Comparison: price down and up, new, removed, back in stock, out of stock.
+- Excel report: summary with a chart, list of changes with colors and filters, full price list.
+- Messenger summary with a threshold on the price change percentage.
 
-## Ограничения
+## Limitations
 
-- Проект проверен только на тестовом магазине. Каждый реальный сайт требует настройки селекторов и проверки.
-- Если цены на сайте подгружаются скриптами, нужен сбор через браузер (Playwright) либо официальный API или
-  выгрузка. Это отдельная оценка.
-- Защиту от ботов (капчи, Cloudflare и подобное) проект не обходит, обход не гарантируется. Перед работой с
-  чужим сайтом нужно изучить условия использования и `robots.txt`; где есть официальный API или фид, лучше
-  брать данные из них.
-- Отправка в Telegram написана, но на настоящем боте не запускалась.
-- В отчёте значения, а не формулы: файл одинаково открывается в любых программах.
+- Tested only on the mock store. Every real site needs its selectors tuned and checked.
+- If prices are loaded by JavaScript, scraping goes through a browser (Playwright) or an official API or export.
+  That is a separate estimate.
+- The project does not bypass anti-bot protection (captchas, Cloudflare and the like). Before working with someone
+  else’s site, check its terms of use and `robots.txt`; where an official API or feed exists, use it.
+- Telegram sending is implemented but has not been run against a real bot.
+- The report contains values, not formulas, so it opens the same way in any spreadsheet app.
 
-## Структура
+## Structure
 
 ```
-run.py             сквозной тестовый запуск
-config.json         сайт, разделы, задержки, порог уведомлений
-monitor/            fetch (загрузка), parse (разбор), crawl (обход), store (SQLite),
-                    diff (сравнение), report (Excel), notify (сводка), cli
-mock_shop/          тестовый магазин для прогона и тестов
-tests/              unittest: разбор цен и карточек, сравнение, сбои, robots.txt, отчёт
+run.py             end-to-end test run
+config.json        site, sections, delays, alert threshold
+monitor/           fetch, parse, crawl, store (SQLite),
+                   diff (comparison), report (Excel), notify (summary), cli
+mock_shop/         the fictional TechnoHome store used for testing
+tests/             unittest: parser, comparison, end-to-end run
 ```
